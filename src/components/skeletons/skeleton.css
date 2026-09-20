@@ -1,0 +1,62 @@
+@layer components {
+.still-skeleton {
+  position: relative; isolation: isolate; overflow: hidden; border-radius: 5px;
+  background: var(--skeleton-base, #202020); color: var(--skeleton-highlight, #555);
+}
+.still-skeleton::after { content: ''; position: absolute; inset: 0; pointer-events: none; }
+.still-skeleton[data-variant=shimmer]::after {
+  background: linear-gradient(100deg, transparent 20%, #ffffff12 48%, transparent 75%);
+  transform: translateX(-100%); animation: still-sweep var(--skeleton-duration) cubic-bezier(.4,0,.2,1) infinite;
+}
+.still-skeleton[data-variant=pulse] { animation: still-pulse var(--skeleton-duration) ease-in-out infinite; }
+.still-skeleton[data-variant=wave]::after {
+  inset: -100%; background: conic-gradient(from 0deg, transparent, #ffffff18, transparent 45%, #ffffff05, transparent);
+  animation: still-wave calc(var(--skeleton-duration) * 2) linear infinite;
+}
+.still-skeleton[data-paused=true], .still-skeleton[data-paused=true]::after { animation-play-state: paused; }
+@keyframes still-sweep { 100% { transform: translateX(100%); } }
+@keyframes still-pulse { 50% { opacity: .4; } }
+@keyframes still-wave { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .still-skeleton, .still-skeleton::after { animation: none !important; }
+  .still-skeleton[data-variant=shimmer]::after { transform: none; opacity: .4; }
+}
+
+}
+
+@layer components {
+  /* Revealing clears the skeleton itself rather than crossing one layer over another: each
+     skeleton wipes or fades over its own whole area, in the character of its animation, and the
+     content underneath is uncovered as it goes. Cell textures clear their own cells on canvas. */
+  .still-reveal { position: relative; display: grid; align-items: start; }
+  .still-reveal-layer { grid-area: 1 / 1; min-width: 0; }
+  .still-reveal-layer[data-visible=false] { opacity: 0; pointer-events: none; }
+  .still-reveal[data-transition=true] .still-reveal-layer { opacity: 1; }
+  /* The content settles in early and waits underneath; the skeleton above decides when it shows. */
+  .still-reveal[data-transition=true] .still-reveal-content { opacity: clamp(0, calc(var(--reveal-progress, 1) * 1.6), 1); }
+  .still-reveal[data-transition=true] .still-skeleton { --erase: var(--reveal-progress, 1); }
+  /* Shimmer is swept away along the same diagonal its highlight travels. */
+  .still-reveal[data-transition=true] .still-skeleton[data-variant=shimmer] {
+    mask-image: linear-gradient(100deg, transparent calc(var(--erase) * 130% - 30%), #000 calc(var(--erase) * 130%));
+  }
+  /* Pulse keeps breathing out: the whole block dims and settles back a touch. */
+  .still-reveal[data-transition=true] .still-skeleton[data-variant=pulse] {
+    animation: none; opacity: calc(1 - var(--erase)); scale: calc(1 - .04 * var(--erase));
+  }
+  /* Wave clears on the turn, the way its conic highlight sweeps the block. */
+  .still-reveal[data-transition=true] .still-skeleton[data-variant=wave] {
+    mask-image: conic-gradient(from 0deg, transparent calc(var(--erase) * 360deg), #000 0);
+  }
+  .still-reveal[data-transition=true] .still-skeleton { mask-repeat: no-repeat; }
+  /* Once revealed the skeleton is out of sight, so nothing needs to keep running. */
+  .still-reveal[data-loading=false]:not([data-transition=true]) .still-skeleton,
+  .still-reveal[data-loading=false]:not([data-transition=true]) .still-skeleton::after { animation-play-state: paused; }
+}
+
+/* Cell textures define their own silhouette, without a solid base or rounded clipping. */
+.still-skeleton:is([data-variant=dither], [data-variant=pixel], [data-variant=scanline], [data-variant=ascii]) {
+  background: transparent;
+  border-radius: 0;
+}
+.still-skeleton:is([data-variant=dither], [data-variant=pixel], [data-variant=scanline], [data-variant=ascii])::after { content: none; }
+.still-texture-canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
